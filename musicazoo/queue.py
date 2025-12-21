@@ -31,8 +31,8 @@ backgrounds = [TextBG, Image]
 q= shmooze.queue.Queue(modules, backgrounds, settings.log_database_path)
 
 def shutdown_handler(signum,frame):
-    print
-    print "Received signal, attempting graceful shutdown..."
+    print()
+    print("Received signal, attempting graceful shutdown...")
     service.ioloop.add_callback_from_signal(q.shutdown)
 
 signal.signal(signal.SIGTERM, shutdown_handler)

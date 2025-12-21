@@ -2,8 +2,8 @@ import os
 import socket
 import tempfile
 import time
-import youtube_dl 
-import Queue
+import yt_dlp as youtube_dl
+import queue as Queue
 
 import shmooze.lib.packet as packet
 import musicazoo.lib.vlc as vlc
@@ -11,11 +11,11 @@ from shmooze.modules import JSONParentPoller
 
 from musicazoo.lib.watch_dl import WatchCartoonOnlineIE
 
-from youtube_dl.compat import compat_cookiejar, compat_urllib_request
-from youtube_dl.utils import make_HTTPS_handler, YoutubeDLHandler
+from yt_dlp.compat import compat_cookiejar, compat_urllib_request
+from yt_dlp.utils import make_HTTPS_handler, YoutubeDLHandler
 
 import threading
-import urllib2
+import urllib.request as urllib2
 
 messages = Queue.Queue()
 

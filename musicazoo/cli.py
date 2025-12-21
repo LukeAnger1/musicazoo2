@@ -1,10 +1,10 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import json
 import os
 import sys
-import urllib
-import urllib2
+import urllib.parse as urllib
+import urllib.request as urllib2
 
 endpoint = os.environ.get("MZ_ENDPOINT", "http://musicazoo.mit.edu/nlp")
 
@@ -19,6 +19,6 @@ req.data=json.dumps(json_req)
 handler = urllib2.urlopen(req)
 result=json.loads(handler.read())
 if result['success']:
-    print result['result']
+    print(result['result'])
 else:
-    print "error:", result['error']
+    print("error:", result['error'])

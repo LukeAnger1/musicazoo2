@@ -7,8 +7,8 @@ import socket
 import subprocess
 import tornado.httpclient
 import traceback
-import urllib
-import urllib2
+import urllib.parse as urllib
+import urllib.request as urllib2
 
 import shmooze.lib.packet as packet
 import shmooze.lib.service as service
@@ -27,7 +27,7 @@ class NLP(service.JSONCommandProcessor, service.Service):
     youtube_api_key = settings.youtube_api_key
 
     def __init__(self):
-        print "NLP started."
+        print("NLP started.")
         self.youtube_cache = {}
         super(NLP, self).__init__()
 
@@ -38,7 +38,7 @@ class NLP(service.JSONCommandProcessor, service.Service):
         try:
             matches = re.match(r"PT(\d+H)?(\d{1,2}M)?(\d{1,2}S)", hms_str).groups()
         except:
-            print hms_str
+            print(hms_str)
             return 0, hms_str
         h, m, s = [int(m.strip("HMS")) if m is not None else 0 for m in matches]
 
@@ -52,9 +52,9 @@ class NLP(service.JSONCommandProcessor, service.Service):
     @service.coroutine
     def youtube_search(self,q):
         if q in self.youtube_cache:
-            print "cache hit"
+            print("cache hit")
             raise service.Return(self.youtube_cache[q])
-        print "cache miss"
+        print("cache miss")
 
         http_client = tornado.httpclient.AsyncHTTPClient()
         # Return the args dict for the first youtube result for 'match'
@@ -299,7 +299,7 @@ class NLP(service.JSONCommandProcessor, service.Service):
     @service.coroutine
     def cmd_fortune(self, q):
         fortune_args = settings.get("fortune_args", ['-s'])
-        fortune_text = subprocess.check_output(['/usr/games/fortune'] + fortune_args)
+        fortune_text = subprocess.check_output(['/usr/games/fortune'] + fortune_args).decode('utf-8', errors='ignore')
         data = {
             'type': 'text',
             'args': {
@@ -330,13 +330,13 @@ class NLP(service.JSONCommandProcessor, service.Service):
         bug_url = "https://api.github.com/repos/zbanks/musicazoo/issues"
         suffix = "\n\nSubmitted via NLP service."
         bug_data = json.dumps({'title': text, 'body' : text + suffix})
-        password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         try:
             password_mgr.add_password(None, bug_url, settings.github_login[0], settings.github_login[1])
         except AttributeError:
             raise service.Return(u"No github account configured in settings.json")
 
-        handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+        handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
         #TODO request(bug_url, bug_data, auth=(musicazoo-bugs, musicaz00)
         raise service.Return(u'Submitted bug: %s - thanks!')
 
@@ -407,8 +407,8 @@ Anything else - Queue Youtube video""")
 nlp = NLP()
 
 def shutdown_handler(signum,frame):
-    print
-    print "Received signal, attempting graceful shutdown..."
+    print()
+    print("Received signal, attempting graceful shutdown...")
     service.ioloop.add_callback_from_signal(nlp.shutdown)
 
 signal.signal(signal.SIGTERM, shutdown_handler)
