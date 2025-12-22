@@ -1,4 +1,4 @@
-import Tkinter
+import tkinter as Tkinter
 import shmooze.settings as sets
 
 def splash(fsg,text,bg=sets.bg_color,fg=sets.fg_color,font="Helvetica",size=72):

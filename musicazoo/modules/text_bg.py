@@ -3,7 +3,7 @@ import shmooze.settings as sets
 import musicazoo.lib.graphics
 import threading
 import socket
-import Tkinter
+import tkinter as Tkinter
 import time
 
 class TextBGModule(JSONParentPoller,threading.Thread):

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-import urllib
+import urllib.parse as urllib
 import re
-import urllib2
+import urllib.request as urllib2
 import sys
-import HTMLParser
+import html.parser as HTMLParser
 
-from youtube_dl.extractor.common import InfoExtractor
+from yt_dlp.extractor.common import InfoExtractor
 
 html_parser = HTMLParser.HTMLParser()
 
@@ -26,11 +26,11 @@ class WatchCartoonOnlineIE(InfoExtractor):
         video_url = re.search(r'<iframe id="(.+?)0" (.+?)>', webpage).group()
         video_url = re.search('src="(.+?)"', video_url).group(1).replace(' ','%20')
 
-        params = urllib.urlencode({'fuck_you':'','confirm':'Click Here to Watch Free!!'})
+        params = urllib.urlencode({'fuck_you':'','confirm':'Click Here to Watch Free!!'}).encode('utf-8')
         request = urllib2.Request(video_url,params)
         video_webpage = o(request).read()
-        final_url =  re.findall(r'file: "(.+?)"', video_webpage)
-        redirect_url=urllib.unquote(final_url[-1]).replace(' ','%20')
+        final_url =  re.findall(r'file: "(.+?)"', video_webpage.decode('utf-8') if isinstance(video_webpage, bytes) else video_webpage)
+        redirect_url=urllib.parse.unquote(final_url[-1]).replace(' ','%20')
         flv_url = o(redirect_url).geturl()
 
         return {'url':flv_url, 'title':title, 'id': video_id}
@@ -40,7 +40,7 @@ def downloader(fileurl,file_name):
     f = open(file_name, 'wb')
     meta = u.info()
     file_size = int(meta.getheaders("Content-Length")[0])
-    print "[watchcartoononline-dl]  Downloading %s (%s bytes)" %(file_name, file_size)
+    print("[watchcartoononline-dl]  Downloading %s (%s bytes)" %(file_name, file_size))
     file_size_dl = 0
     block_size = 8192
      

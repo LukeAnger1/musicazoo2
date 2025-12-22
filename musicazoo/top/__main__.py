@@ -21,7 +21,7 @@ class Top(service.JSONCommandProcessor, service.Service):
     MAX_COUNT = 100
 
     def __init__(self):
-        print "Top started."
+        print("Top started.")
         self.queue_db = database.Database()
         self.db = database.Database()
 
@@ -163,7 +163,7 @@ class Top(service.JSONCommandProcessor, service.Service):
         results = []
 
         for i, row in enumerate(rows):
-            print row
+            print(row)
             if row["addcount"] == last_plays:
                 rank = last_rank
             else:
@@ -208,8 +208,8 @@ class Top(service.JSONCommandProcessor, service.Service):
 top = Top()
 
 def shutdown_handler(signum,frame):
-    print
-    print "Received signal, attempting graceful shutdown..."
+    print()
+    print("Received signal, attempting graceful shutdown...")
     service.ioloop.add_callback_from_signal(top.shutdown)
 
 signal.signal(signal.SIGTERM, shutdown_handler)

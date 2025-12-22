@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import email
 import encodings
 import json
@@ -6,7 +6,7 @@ import os
 import quopri
 import re
 import sys
-import urllib2
+import urllib.request as urllib2
 
 try:
     import talon
@@ -35,9 +35,11 @@ class EmailParser(object):
             if part.is_multipart():
                 continue
             if part.get_content_type() == "text/plain":
-                aliases = encodings.aliases.aliases.keys()
-                css=filter(lambda x: x in aliases, part.get_charsets())
+                aliases = list(encodings.aliases.aliases.keys())
+                css=list(filter(lambda x: x in aliases, part.get_charsets()))
                 msg=part.get_payload(decode=True)
+                if isinstance(msg, bytes):
+                    msg = msg.decode('utf-8', errors='ignore')
                 msg=re.sub(r'\r\n','\n',msg) # fuck you windows
                 msg=self.strip_reply(msg)
                 self.body=msg
@@ -92,7 +94,7 @@ class EmailParser(object):
             }
         }]
         commands += self.extra
-        print send_mz_commands(endpoint, commands)
+        print(send_mz_commands(endpoint, commands))
 
 
 if __name__ == "__main__":

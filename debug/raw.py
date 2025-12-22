@@ -19,11 +19,11 @@ def do_command(cmd_list):
     return resp.json()
 
 while True:
-	inp_str=raw_input("> ")
+	inp_str=input("> ")
 	try:
 		inp_json=json.loads(inp_str)
 	except ValueError as e:
-		print "Bad json:",e
+		print("Bad json:",e)
 		continue
 
 	try:
@@ -32,11 +32,11 @@ while True:
 		elif isinstance(inp_json,list):
 			out_json=do_command(inp_json)
 		else:
-			print "Error, please specify a dict or list"
+			print("Error, please specify a dict or list")
 			continue
 
 	except Exception as e:
-		print "MZ Error:",e
+		print("MZ Error:",e)
 		continue
 
-	print json.dumps(out_json)
+	print(json.dumps(out_json))

@@ -101,6 +101,6 @@ class DummyLuxRelayDevice(object):
         if addr is None:
             addr = self.addr
         self.state = self.next_state[:]
-        print "Relay 0x%x:" % addr, self.state
+        print("Relay 0x%x:" % addr, self.state)
 
 

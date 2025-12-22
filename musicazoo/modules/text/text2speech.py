@@ -3,7 +3,7 @@ import requests
 import tempfile
 
 def google(text):
-    text=unicode(text)
+    text=str(text)
 
     limit=99
     whitespace=['.',',',':',';','--','-','\t','\r\n','\n\r','\n','\r',' ']
