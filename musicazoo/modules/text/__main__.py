@@ -3,12 +3,12 @@ import musicazoo.lib.graphics
 import musicazoo.lib.vlc
 import threading
 import socket
-import Tkinter
+import tkinter as Tkinter
 import time
 
-import text2speech
-import text2screen
-import preprocessing
+from . import text2speech
+from . import text2screen
+from . import preprocessing
 
 text2speech_engines = {
     'google':text2speech.google,

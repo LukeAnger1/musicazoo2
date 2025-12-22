@@ -1,4 +1,4 @@
-import endpoints
+from . import endpoints
 import os
 import werkzeug
 

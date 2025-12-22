@@ -5,7 +5,7 @@ import shmooze.lib.service as service
 import shmooze.settings as settings
 import signal
 
-import lux_hal
+from . import lux_hal
 
 
 class Lux(service.JSONCommandProcessor, service.Service):

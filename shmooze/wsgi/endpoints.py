@@ -1,4 +1,4 @@
-import util
+from . import util
 import pkg_resources
 import shmooze.settings as settings
 

@@ -3,10 +3,10 @@ import musicazoo.lib.graphics
 import shmooze.settings as sets
 import threading
 import socket
-import Tkinter
+import tkinter as Tkinter
 import time
-import cStringIO
-import urllib
+import io
+import urllib.request
 from PIL import Image, ImageTk
 
 class ImageModule(JSONParentPoller,threading.Thread):
@@ -26,7 +26,7 @@ class ImageModule(JSONParentPoller,threading.Thread):
 
     def load(self):
         self.set_parameters({"url": self.url})
-        f = cStringIO.StringIO(urllib.urlopen(self.url).read())
+        f = io.BytesIO(urllib.request.urlopen(self.url).read())
         i=Image.open(f)
         self.pi_seq=[]
         self.image_seq=[]

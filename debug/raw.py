@@ -19,7 +19,7 @@ def do_command(cmd_list):
     return resp.json()
 
 while True:
-	inp_str=raw_input("> ")
+	inp_str=input("> ")
 	try:
 		inp_json=json.loads(inp_str)
 	except ValueError as e:
