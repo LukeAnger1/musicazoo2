@@ -62,7 +62,7 @@ class Pool(service.JSONCommandProcessor, service.Service):
     # Retrieves names of possible modules that can be added to the pool
     @service.coroutine
     def modules_available(self):
-        raise service.Return(self.modules_available_dict.keys())
+        raise service.Return(list(self.modules_available_dict.keys()))
 
     # Called from client
     # Retrieves the current pool, and info about modules on it

@@ -78,13 +78,13 @@ class Queue(service.JSONCommandProcessor, service.Service):
     # Retrieves names of possible modules that can be added to the queue
     @service.coroutine
     def modules_available(self):
-        raise service.Return(self.modules_available_dict.keys())
+        raise service.Return(list(self.modules_available_dict.keys()))
 
     # Called from client
     # Retrieves names of possible backgrounds
     @service.coroutine
     def backgrounds_available(self):
-        raise service.Return(self.backgrounds_available_dict.keys())
+        raise service.Return(list(self.backgrounds_available_dict.keys()))
 
     # Called from client
     # Retrieves the current queue, and info about modules on it
