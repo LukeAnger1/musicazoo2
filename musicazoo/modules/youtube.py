@@ -25,7 +25,7 @@ def get_mime_type(url):
             return "HEAD"
     try:
         response = urllib2.urlopen(HeadRequest(url))
-        return response.info().dict['content-type']
+        return response.info().get('content-type')
     except Exception as e:
         raise Exception("URL Error")
 
