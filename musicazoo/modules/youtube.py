@@ -178,10 +178,12 @@ class YoutubeModule(JSONParentPoller):
 
         # Configure yt-dlp options
         ydl_opts = {
-            'format': 'best',  # Download best quality
+            'format': 'bestvideo+bestaudio/best',  # Flexible format selection with fallback
             'outtmpl': output_template,
             'quiet': False,
             'no_warnings': False,
+            'cookiesfrombrowser': ('chrome',),  # Use Chrome browser cookies for authentication
+            'merge_output_format': 'mp4',  # Merge into mp4 format
         }
 
         try:
