@@ -1,47 +1,28 @@
 import os
 import socket
 import tempfile
-import time
-import yt_dlp as youtube_dl
+import threading
 import queue as Queue
 
-import shmooze.lib.packet as packet
+import yt_dlp
 import musicazoo.lib.vlc as vlc
 from shmooze.modules import JSONParentPoller
 
-from musicazoo.lib.watch_dl import WatchCartoonOnlineIE
-
-from yt_dlp.compat import compat_cookiejar, compat_urllib_request
-from yt_dlp.utils import make_HTTPS_handler, YoutubeDLHandler
-
-import threading
-import urllib.request as urllib2
-
 messages = Queue.Queue()
-
-def get_mime_type(url):
-    class HeadRequest(urllib2.Request):
-        def get_method(self):
-            return "HEAD"
-    try:
-        response = urllib2.urlopen(HeadRequest(url))
-        return response.info().get('content-type')
-    except Exception as e:
-        raise Exception("URL Error")
 
 class YoutubeModule(JSONParentPoller):
     def __init__(self, headless=False):
-        self.headless=headless
-        self.update_lock = threading.Lock() # TODO I don't think this needs to exist
-        self.thread_stopped = False 
+        self.headless = headless
+        self.update_lock = threading.Lock()
+        self.thread_stopped = False
+        self.downloaded_file = None
         super(YoutubeModule, self).__init__()
 
     def serialize(self):
-        result = { t: getattr(self, t) for t in [
-            "url", "title", "duration", "site", "media", "thumbnail", "description", "time", "vid"
-            ]
-        }
-        
+        result = {t: getattr(self, t) for t in [
+            "url", "title", "duration", "thumbnail", "description", "vid"
+        ]}
+
         state = "initialized"
         if self.state_is_stopping:
             state = "stopping"
@@ -63,28 +44,22 @@ class YoutubeModule(JSONParentPoller):
         return self.state_has_started and not (self.state_is_suspended or self.state_is_paused)
 
     def cmd_init(self, url):
-        # Has the youtube url/data been fetched?
-        self.state_is_ready = False 
-        # Has the video started playing at all?
+        # Initialize state flags
+        self.state_is_ready = False
         self.state_has_started = False
-        # Is the video currently paused (by the UI)
         self.state_is_paused = False
-        # Is the video currently suspended? (not at the top of the queue)
         self.state_is_suspended = False
-        # Is the video stopped and currently terminating?
         self.state_is_stopping = False
 
-        self.url=url
-        self.title=None
-        self.duration=None
-        self.site=None
-        self.media=None
-        self.thumbnail=None
-        self.description=None
-        self.time=None
-        self.vid=None
-        self.cookies=None
-        self.rate=None
+        # Initialize video properties
+        self.url = url
+        self.title = None
+        self.duration = None
+        self.thumbnail = None
+        self.description = None
+        self.time = None
+        self.vid = None
+
         messages.put("init")
         self.safe_update()
 
@@ -110,7 +85,6 @@ class YoutubeModule(JSONParentPoller):
             if self.vlc_mp.is_playing():
                 self.vlc_mp.pause()
                 self.hide()
-            #self.state_is_paused = True
         self.state_is_suspended = True
         self.safe_update()
 
@@ -130,12 +104,10 @@ class YoutubeModule(JSONParentPoller):
     def cmd_rm(self):
         self.state_is_stopping = True
         messages.put("rm")
-        #messages.join()
 
     def cmd_seek_abs(self, position):
-        #TODO: if the video hasn't started, then cache the position and set it as soon as the video starts
         if self.state_has_started:
-            self.vlc_mp.set_time(int(position*1000))
+            self.vlc_mp.set_time(int(position * 1000))
             self.time = position
             self.safe_update()
 
@@ -144,13 +116,20 @@ class YoutubeModule(JSONParentPoller):
             cur_time = self.vlc_mp.get_time()
             if cur_time < 0:
                 return
-            self.vlc_mp.set_time(cur_time+int(delta*1000))
+            self.vlc_mp.set_time(cur_time + int(delta * 1000))
             self.time = (cur_time / 1000) + delta
             self.safe_update()
 
     def stop(self):
         self.vlc_mp.stop()
         self.thread_stopped = True
+
+        # Clean up downloaded file
+        if self.downloaded_file and os.path.exists(self.downloaded_file):
+            try:
+                os.remove(self.downloaded_file)
+            except Exception as e:
+                print(f"Error removing downloaded file: {e}")
 
         with self.update_lock:
             self.rm()
@@ -167,139 +146,121 @@ class YoutubeModule(JSONParentPoller):
             self.duration = ev.u.new_length / 1000.
             self.safe_update()
 
+        # Create VLC instance
         if not self.headless:
-            #os.environ["DISPLAY"] = ":0"
-            self.vlc_i = vlc.Instance(['--no-video-title-show']) # -f
+            self.vlc_i = vlc.Instance(['--no-video-title-show'])
         else:
             self.vlc_i = vlc.Instance(['--novideo'])
+
         self.vlc_mp = self.vlc_i.media_player_new()
+        # Set volume to maximum
+        self.vlc_mp.audio_set_volume(100)
         self.vlc_ev = self.vlc_mp.event_manager()
 
+        # Attach event handlers
         self.vlc_ev.event_attach(vlc.EventType.MediaPlayerEndReached, ev_end)
         self.vlc_ev.event_attach(vlc.EventType.MediaPlayerTimeChanged, ev_time)
         self.vlc_ev.event_attach(vlc.EventType.MediaPlayerLengthChanged, ev_length)
 
-        vlc_media=self.vlc_i.media_new_location(self.media)
+        # Play the downloaded file
+        vlc_media = self.vlc_i.media_new_path(self.downloaded_file)
         self.vlc_mp.set_media(vlc_media)
         self.vlc_mp.play()
 
         self.state_has_started = True
         self.safe_update()
 
-    def get_video_info(self):
-        url = self.url
-        mimetype=get_mime_type(url)
+    def download_video(self):
+        """Download the video using yt-dlp and extract metadata."""
+        # Create temporary file for download
+        temp_dir = tempfile.gettempdir()
+        output_template = os.path.join(temp_dir, 'musicazoo_%(id)s.%(ext)s')
 
-        if mimetype.startswith("text/html"):
-            params={}
-            # General configuration
-            tf=tempfile.NamedTemporaryFile(delete=False)
-            tf.close()
-            self.cookies=tf.name
-            jar = compat_cookiejar.MozillaCookieJar(self.cookies)
-            cookie_processor = compat_urllib_request.HTTPCookieProcessor(jar)
-            proxies = compat_urllib_request.getproxies()
-            proxy_handler = compat_urllib_request.ProxyHandler(proxies)
-            https_handler = make_HTTPS_handler(params)
-            ydlh = YoutubeDLHandler(params)
-            opener = compat_urllib_request.build_opener(https_handler, proxy_handler, cookie_processor, ydlh)
-            compat_urllib_request.install_opener(opener)
+        # Configure yt-dlp options
+        ydl_opts = {
+            'format': 'best',  # Download best quality
+            'outtmpl': output_template,
+            'quiet': False,
+            'no_warnings': False,
+        }
 
-            y=youtube_dl.YoutubeDL({'outtmpl':u'','skip_download':True}, auto_init=False) # empty outtmpl needed due to weird issue in youtube-dl
-            y.add_info_extractor(WatchCartoonOnlineIE())
-            y.add_default_info_extractors()
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Extract info and download
+                info = ydl.extract_info(self.url, download=True)
 
-            try:
-                info=y.extract_info(url,download=False)
-            except Exception:
-                raise
-                self.status='invalid'
-                self.queue.removeMeAsync(self.uid) # Remove if possible # TODO error here
-                self.ready.release()
-                return False
+                # Handle playlists - take first entry
+                if 'entries' in info:
+                    vinfo = info['entries'][0]
+                else:
+                    vinfo = info
 
-            jar.save()
+                # Extract metadata
+                self.title = vinfo.get('title', 'Unknown')
+                self.duration = vinfo.get('duration', 0)
+                self.thumbnail = vinfo.get('thumbnail')
+                self.description = vinfo.get('description')
+                self.vid = vinfo.get('id')
 
-            if 'entries' in info:
-                vinfo=info['entries'][0]
-            else:
-                vinfo=info
+                # Get the downloaded file path
+                self.downloaded_file = ydl.prepare_filename(vinfo)
 
-            #import json
-            #print json.dumps(vinfo, sort_keys=True,
-            #                 indent=4, separators=(',', ': '))
+                print(f"Downloaded: {self.downloaded_file}")
 
-            if 'title' in vinfo:
-                self.title=vinfo['title']
-            if 'duration' in vinfo:
-                self.duration=vinfo['duration']
-            if 'extractor' in vinfo:
-                self.site=vinfo['extractor']
-            if 'url' in vinfo:
-                self.media=vinfo['url']
-            else:
-                if 'formats' in vinfo and len(vinfo['formats']) > 0:
-                    best = vinfo['formats'][-1]
-                    if 'url' in best:
-                        self.media = best['url']
-            if 'thumbnail' in vinfo:
-                self.thumbnail=vinfo['thumbnail']
-            if 'description' in vinfo:
-                self.description=vinfo['description']
-            if 'id' in vinfo:
-                self.vid=vinfo['id']
-
-        else:
-            self.media=url
-            self.title=url
+        except Exception as e:
+            print(f"Error downloading video: {e}")
+            raise
 
         self.state_is_ready = True
         self.safe_update()
         return True
 
-    # TODO This shouldn't exist.
     def safe_update(self):
+        """Thread-safe parameter update."""
         with self.update_lock:
             self.set_parameters(self.serialize())
 
-    commands={
-        'init':cmd_init,
-        'play':cmd_play,
-        'suspend':cmd_suspend,
-        'rm':cmd_rm,
+    commands = {
+        'init': cmd_init,
+        'play': cmd_play,
+        'suspend': cmd_suspend,
+        'rm': cmd_rm,
         'do_pause': cmd_pause,
         'do_resume': cmd_resume,
-        #'set_rate': cmd_set_rate,
         'do_seek_rel': cmd_seek_rel,
         'do_seek_abs': cmd_seek_abs,
     }
 
+
+# Main execution
 import sys
 
 headless = '--headless' in sys.argv
-
 mod = YoutubeModule(headless=headless)
 
 def serve_forever():
+    """Handle incoming commands from the queue."""
     while not mod.thread_stopped:
         try:
             mod.handle_one_command()
         except socket.error:
             break
 
-t=threading.Thread(target=serve_forever)
-t.daemon=True
+# Start command handler thread
+t = threading.Thread(target=serve_forever)
+t.daemon = True
 t.start()
 
+# Main message loop
 while True:
     msg = messages.get(block=True)
     messages.task_done()
     if msg == "init":
-        mod.get_video_info()
+        mod.download_video()
     elif msg == "play":
         mod.play()
     elif msg == "rm":
         mod.stop()
         break
-    
+
 mod.close()
