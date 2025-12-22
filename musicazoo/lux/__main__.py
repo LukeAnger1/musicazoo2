@@ -22,13 +22,13 @@ class Lux(service.JSONCommandProcessor, service.Service):
             try:
                 self.bus = lux_hal.LuxBusDevice(port="/dev/ttyUSB%d" % i)
             except Exception as e:
-                print i, e
+                print(i, e)
                 pass
             else:
                 break
         else:
             self.bus = None
-            print "No lux bus found; mocking"
+            print("No lux bus found; mocking")
 
         self.devices = {}
         for name, (addr, size) in self.DEVICES.items():
@@ -61,8 +61,8 @@ class Lux(service.JSONCommandProcessor, service.Service):
 lux = Lux()
 
 def shutdown_handler(signum,frame):
-    print
-    print "Received signal, attempting graceful shutdown..."
+    print()
+    print("Received signal, attempting graceful shutdown...")
     service.ioloop.add_callback_from_signal(vol.shutdown)
 
 signal.signal(signal.SIGTERM, shutdown_handler)

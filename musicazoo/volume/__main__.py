@@ -26,14 +26,14 @@ class Volume(service.JSONCommandProcessor, service.Service):
     port=settings.ports["vol"]
 
     def __init__(self):
-        print "Volume started."
+        print("Volume started.")
 
         if alsaaudio:
             self.mixer=alsaaudio.Mixer(control='PCM')
         elif osax:
             self.mixer = osax.OSAX()
         else:
-            print "Unable to control volume"
+            print("Unable to control volume")
 
         # JSONCommandService handles all of the low-level TCP connection stuff.
         super(Volume, self).__init__()
@@ -56,7 +56,7 @@ class Volume(service.JSONCommandProcessor, service.Service):
         elif osax:
             self.mixer.set_volume(output_volume=v)
         else:
-            print "Setting fake volume: ", v
+            print("Setting fake volume: ", v)
         raise service.Return({})
 
     def shutdown(self):
@@ -70,8 +70,8 @@ class Volume(service.JSONCommandProcessor, service.Service):
 vol = Volume()
 
 def shutdown_handler(signum,frame):
-    print
-    print "Received signal, attempting graceful shutdown..."
+    print()
+    print("Received signal, attempting graceful shutdown...")
     service.ioloop.add_callback_from_signal(vol.shutdown)
 
 signal.signal(signal.SIGTERM, shutdown_handler)

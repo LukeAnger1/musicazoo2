@@ -3,7 +3,7 @@ import time
 import signal
 
 def handler(signum,frame):
-    print "Ignoring SIGTERM..."
+    print("Ignoring SIGTERM...")
 
 class ProblematicModule(JSONParentPoller):
     def __init__(self):
@@ -17,13 +17,13 @@ class ProblematicModule(JSONParentPoller):
         if noterm:
             signal.signal(signal.SIGTERM, handler)
         if noinit:
-            print "Not responding to init command..."
+            print("Not responding to init command...")
             while True:
                 time.sleep(1)
 
     def cmd_rm(self):
         if self.noquit:
-            print "Ignoring RM message..."
+            print("Ignoring RM message...")
         else:
             self.run=False
 
@@ -50,6 +50,6 @@ mod = ProblematicModule()
 while mod.run:
     mod.handle_one_command()
     if mod.noresponse:
-        print "Handled init, freezing..."
+        print("Handled init, freezing...")
         while True:
             time.sleep(1)

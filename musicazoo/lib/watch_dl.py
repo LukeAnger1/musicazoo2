@@ -40,7 +40,7 @@ def downloader(fileurl,file_name):
     f = open(file_name, 'wb')
     meta = u.info()
     file_size = int(meta.getheaders("Content-Length")[0])
-    print "[watchcartoononline-dl]  Downloading %s (%s bytes)" %(file_name, file_size)
+    print("[watchcartoononline-dl]  Downloading %s (%s bytes)" %(file_name, file_size))
     file_size_dl = 0
     block_size = 8192
      
