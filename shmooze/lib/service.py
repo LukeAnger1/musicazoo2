@@ -12,6 +12,7 @@ import time
 import shmooze.lib.packet as packet
 import datetime
 import socket
+import errno
 
 # Re-export tornado classes for compatibility
 Lock = tornado.locks.Lock
@@ -21,17 +22,18 @@ ioloop=tornado.ioloop.IOLoop.instance()
 
 @coroutine
 def accept(sock):
-    @return_future
-    def wrap_add_handler(callback):
-       def wait_for_accept(fd,events): # TODO more intelligently check for events?
+    def wrap_add_handler():
+        future = Future()
+        def wait_for_accept(fd,events): # TODO more intelligently check for events?
             try:
                 result = sock.accept()
-                callback(result)
+                future.set_result(result)
             except socket.error as e:
                 if e.args[0] not in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    raise
+                    future.set_exception(e)
 
-       ioloop.add_handler(sock.fileno(), wait_for_accept, ioloop.READ)
+        ioloop.add_handler(sock.fileno(), wait_for_accept, ioloop.READ)
+        return future
 
     sock.setblocking(0)
     try:
@@ -48,9 +50,10 @@ def wait(proc):
         if p is not None:
             raise Return(p)
 
-        @return_future
-        def pause(callback):
-            ioloop.add_timeout(poll_period,callback)
+        def pause():
+            future = Future()
+            ioloop.add_timeout(poll_period, lambda: future.set_result(None))
+            return future
 
         yield pause()
 

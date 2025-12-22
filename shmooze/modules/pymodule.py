@@ -19,41 +19,41 @@ class ParentConnection(object):
         self.cs.connect((host,cmd_port))
         self.us.connect((host,update_port))
 
-        self.cs_buffer=''
-        self.us_buffer=''
+        self.cs_buffer=b''
+        self.us_buffer=b''
 
     # Blocks until a command has been received and returns it
     def recv_cmd(self):
         while True:
             self.cs_buffer+=self.cs.recv(4096)
-            a=self.cs_buffer.find('\n')
+            a=self.cs_buffer.find(b'\n')
             if a >= 0:
                 cmd=self.cs_buffer[0:a]
                 self.cs_buffer=self.cs_buffer[a+1:]
                 break
-        return json.loads(cmd)
+        return json.loads(cmd.decode('utf-8'))
 
     # Blocks until an update has been acknowledged
     def recv_update_resp(self):
         while True:
             self.us_buffer+=self.us.recv(4096)
-            a=self.us_buffer.find('\n')
+            a=self.us_buffer.find(b'\n')
             if a >= 0:
                 resp=self.us_buffer[0:a]
                 self.us_buffer=self.us_buffer[a+1:]
                 break
-        resp_dict = json.loads(resp)
+        resp_dict = json.loads(resp.decode('utf-8'))
         packet.assert_success(resp_dict)
         return resp_dict['result']
 
     # Sends response to a command
     def send_resp(self,packet):
-        p_str=json.dumps(packet)+'\n'
+        p_str=(json.dumps(packet)+'\n').encode('utf-8')
         self.cs.send(p_str)
 
     # Sends an update packet
     def send_update(self, packet):
-        p_str=json.dumps(packet)+'\n'
+        p_str=(json.dumps(packet)+'\n').encode('utf-8')
         self.us.send(p_str)
         # Right now, updates are not responded to
         #return self.recv_update_resp()

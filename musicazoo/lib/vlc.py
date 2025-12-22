@@ -45,7 +45,7 @@ import os
 import sys
 
 # Used by EventManager in override.py
-from inspect import getargspec
+from inspect import getfullargspec as getargspec
 
 __version__ = "N/A"
 build_date  = "Fri Apr 27 17:00:20 2012"

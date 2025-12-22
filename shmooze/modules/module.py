@@ -142,14 +142,14 @@ class Module(service.JSONCommandProcessor):
         cmd_dict={"cmd":cmd}
         if args is not None:
             cmd_dict["args"]=args
-        cmd_str=json.dumps(cmd_dict)+'\n'
+        cmd_str=(json.dumps(cmd_dict)+'\n').encode('utf-8')
 
         toe=None
         # Lock on the command pipe so we ensure sequential req/rep transactions
         try:
             with (yield self.cmd_lock.acquire()):
                 yield service.with_timeout(self.cmd_write_timeout,self.cmd_stream.write(cmd_str))
-                response_str = yield service.with_timeout(self.cmd_read_timeout,self.cmd_stream.read_until('\n'))
+                response_str = yield service.with_timeout(self.cmd_read_timeout,self.cmd_stream.read_until(b'\n'))
         except (service.TimeoutError,tornado.iostream.StreamClosedError) as e:
             self.terminate()
             if self.logger is not None:
@@ -160,7 +160,7 @@ class Module(service.JSONCommandProcessor):
                 raise Exception("Pipe to module unexpectedly closed")
             raise
 
-        response_dict=json.loads(response_str)
+        response_dict=json.loads(response_str.decode('utf-8'))
         if self.logger is not None:
             self.logger.log(self.uid, "queue-module", cmd_dict, response_dict)
         raise service.Return(packet.assert_success(response_dict))
