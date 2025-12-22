@@ -1,5 +1,5 @@
 from . import util
-import pkg_resources
+from importlib import metadata
 import shmooze.settings as settings
 
 prefix = settings.get("wsgi_prefix", "/")

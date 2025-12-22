@@ -1,11 +1,15 @@
 from . import endpoints
 import os
-import werkzeug
+from werkzeug import routing, exceptions
+from werkzeug.wrappers import Response
+from werkzeug.wsgi import wrap_file
+from werkzeug.middleware.shared_data import SharedDataMiddleware
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
-not_found_app = werkzeug.exceptions.NotFound()
+not_found_app = exceptions.NotFound()
 
-url_map = werkzeug.routing.Map([
-    werkzeug.routing.Rule('/', endpoint='index.html'),
+url_map = routing.Map([
+    routing.Rule('/', endpoint='index.html'),
 ])
 
 static_path = endpoints.settings.static_path
@@ -19,9 +23,9 @@ def application(environ, start_response):
     else:
         file_path = os.path.join(static_path, endpoint)
         f = open(file_path)
-        response = werkzeug.wrappers.Response(werkzeug.wsgi.wrap_file(environ, f), mimetype="text/html")
+        response = Response(wrap_file(environ, f), mimetype="text/html")
         return response(environ, start_response)
 
 
-application = werkzeug.wsgi.SharedDataMiddleware(application, dict([endpoints.static_endpoint]))
-application = werkzeug.wsgi.DispatcherMiddleware(application, endpoints.wsgi_endpoints)
+application = SharedDataMiddleware(application, dict([endpoints.static_endpoint]))
+application = DispatcherMiddleware(application, endpoints.wsgi_endpoints)
