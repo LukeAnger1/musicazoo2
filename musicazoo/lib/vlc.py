@@ -47,6 +47,13 @@ import sys
 # Used by EventManager in override.py
 from inspect import getfullargspec as getargspec
 
+# Python 2/3 compatibility
+try:
+    basestring
+except NameError:
+    # Python 3
+    basestring = str
+
 __version__ = "N/A"
 build_date  = "Fri Apr 27 17:00:20 2012"
 
@@ -882,6 +889,9 @@ class Instance(_Ctype):
              # no parameters passed, for win32 and MacOS,
              # specify the plugin_path if detected earlier
             args = ['vlc', '--plugin-path=' + plugin_path]
+        # Python 3: encode strings to bytes for ctypes
+        if sys.version_info[0] >= 3:
+            args = [arg.encode('utf-8') if isinstance(arg, str) else arg for arg in args]
         return libvlc_new(len(args), args)
 
     def media_player_new(self, uri=None):
@@ -3103,6 +3113,9 @@ def libvlc_media_new_location(p_instance, psz_mrl):
     f = _Cfunctions.get('libvlc_media_new_location', None) or \
         _Cfunction('libvlc_media_new_location', ((1,), (1,),), class_result(Media),
                     ctypes.c_void_p, Instance, ctypes.c_char_p)
+    # Python 3: encode string to bytes for ctypes
+    if sys.version_info[0] >= 3 and isinstance(psz_mrl, str):
+        psz_mrl = psz_mrl.encode('utf-8')
     return f(p_instance, psz_mrl)
 
 def libvlc_media_new_path(p_instance, path):
@@ -3115,6 +3128,9 @@ def libvlc_media_new_path(p_instance, path):
     f = _Cfunctions.get('libvlc_media_new_path', None) or \
         _Cfunction('libvlc_media_new_path', ((1,), (1,),), class_result(Media),
                     ctypes.c_void_p, Instance, ctypes.c_char_p)
+    # Python 3: encode string to bytes for ctypes
+    if sys.version_info[0] >= 3 and isinstance(path, str):
+        path = path.encode('utf-8')
     return f(p_instance, path)
 
 def libvlc_media_new_fd(p_instance, fd):
