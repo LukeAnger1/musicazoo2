@@ -28,6 +28,13 @@ class Image(Module):
 modules = [Youtube, Text]
 backgrounds = [TextBG, Image]
 
+print("=" * 60)
+print(f"[QUEUE] Starting Queue server on port {settings.ports['queue']}")
+print(f"[QUEUE] Available modules: {[m.TYPE_STRING for m in modules]}")
+print(f"[QUEUE] Available backgrounds: {[b.TYPE_STRING for b in backgrounds]}")
+print(f"[QUEUE] Log database: {settings.log_database_path}")
+print("=" * 60)
+
 q= shmooze.queue.Queue(modules, backgrounds, settings.log_database_path)
 
 def shutdown_handler(signum,frame):

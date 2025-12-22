@@ -69,12 +69,15 @@ def connection_ready(sock, fd, events):
 def listen_for_commands(stream,handle_cr,over_fn=None):
     try:
         while True:
-            data = yield stream.read_until('\n')
-            parsed = json.loads(data)
+            data = yield stream.read_until(b'\n')
+            print(f"[Service] Received command: {data.strip()}")
+            parsed = json.loads(data.decode('utf-8'))
             response = yield handle_cr(parsed)
-            encoded = json.dumps(response)+'\n'
+            encoded = (json.dumps(response)+'\n').encode('utf-8')
+            print(f"[Service] Sending response: {encoded.strip()}")
             yield stream.write(encoded)
     except tornado.iostream.StreamClosedError:
+        print("[Service] Client closed connection")
         pass
     except Exception:
         print("Communication exception!")
@@ -89,17 +92,24 @@ def listen_for_commands(stream,handle_cr,over_fn=None):
 def json_query(addr,port,inp,timeout=2):
     @coroutine
     def talk(stream):
+        print(f"[Service->Service] Connecting to {addr}:{port}")
+        print(f"[Service->Service] Sending: {json.dumps(inp)}")
         yield stream.connect((addr,port))
-        encoded = json.dumps(inp)+'\n'
+        print(f"[Service->Service] Connected to {addr}:{port}")
+        encoded = (json.dumps(inp)+'\n').encode('utf-8')
         yield stream.write(encoded)
-        data = yield stream.read_until('\n')
-        decoded = json.loads(data)
+        data = yield stream.read_until(b'\n')
+        decoded = json.loads(data.decode('utf-8'))
+        print(f"[Service<-Service] Received from {addr}:{port}: {data.strip()}")
         raise Return(decoded)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     stream = tornado.iostream.IOStream(s)
     try:
         result = yield with_timeout(datetime.timedelta(seconds=timeout),talk(stream))
+    except Exception as e:
+        print(f"[Service->Service] ERROR: Failed to communicate with {addr}:{port} - {e}")
+        raise
     finally:
         stream.close()
     raise Return(result)
@@ -110,6 +120,7 @@ class Service(tornado.tcpserver.TCPServer):
             self.port = port
         tornado.tcpserver.TCPServer.__init__(self)
         self.listen(self.port)
+        print(f"[Service] Listening on port {self.port} for incoming connections")
 
     # Override this
     @coroutine
@@ -117,6 +128,7 @@ class Service(tornado.tcpserver.TCPServer):
         raise Return(query)
 
     def handle_stream(self,stream,address):
+        print(f"[Service] Accepted connection from {address}")
         return listen_for_commands(stream,self.command)
 
 class JSONCommandProcessor(object):

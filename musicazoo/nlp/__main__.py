@@ -27,7 +27,12 @@ class NLP(service.JSONCommandProcessor, service.Service):
     youtube_api_key = settings.youtube_api_key
 
     def __init__(self):
-        print("NLP started.")
+        print("=" * 60)
+        print(f"[NLP] Starting NLP server on port {settings.ports['nlp']}")
+        print(f"[NLP] Will connect to Queue service at {self.queue_host}:{self.queue_port}")
+        print(f"[NLP] Will connect to Volume service at {self.vol_host}:{self.vol_port}")
+        print("[NLP] NLP started.")
+        print("=" * 60)
         self.youtube_cache = {}
         super(NLP, self).__init__()
 
@@ -139,6 +144,7 @@ class NLP(service.JSONCommandProcessor, service.Service):
     @service.coroutine
     def suggest(self,message):
         stripped_message = message.strip()
+        print(f"[NLP] Processing suggest request for: '{message}'")
         suggestions = []
         for sc, sc_help in self.suggest_commands:
             if sc.startswith(stripped_message):
@@ -150,13 +156,18 @@ class NLP(service.JSONCommandProcessor, service.Service):
                 })
         rs = yield self.wildcard_suggest(message)
         suggestions.extend(rs)
+        print(f"[NLP] Returning {len(suggestions)} suggestions")
         raise service.Return({'suggestions':suggestions})
 
     @service.coroutine
     def queue_cmd(self,cmd,args={},assert_success=True):
+        print(f"[NLP->Queue] Sending command '{cmd}' to queue at {self.queue_host}:{self.queue_port}")
+        print(f"[NLP->Queue] Arguments: {args}")
         try:
             result = yield service.json_query(self.queue_host,self.queue_port,{"cmd":cmd,"args":args})
-        except (socket.error,service.TimeoutError):
+            print(f"[NLP<-Queue] Received response from queue: {result}")
+        except (socket.error,service.TimeoutError) as e:
+            print(f"[NLP->Queue] ERROR: Failed to communicate with queue - {e}")
             raise Exception("Error communicating with queue.")
         if assert_success:
             raise service.Return(packet.assert_success(result))
@@ -164,9 +175,13 @@ class NLP(service.JSONCommandProcessor, service.Service):
 
     @service.coroutine
     def vol_cmd(self,cmd,args={},assert_success=True):
+        print(f"[NLP->Volume] Sending command '{cmd}' to volume at {self.vol_host}:{self.vol_port}")
+        print(f"[NLP->Volume] Arguments: {args}")
         try:
             result = yield service.json_query(self.vol_host,self.vol_port,{"cmd":cmd,"args":args})
-        except (socket.error,service.TimeoutError):
+            print(f"[NLP<-Volume] Received response from volume: {result}")
+        except (socket.error,service.TimeoutError) as e:
+            print(f"[NLP->Volume] ERROR: Failed to communicate with volume - {e}")
             raise Exception("Error communicating with volume control.")
         if assert_success:
             raise service.Return(packet.assert_success(result))
@@ -175,11 +190,15 @@ class NLP(service.JSONCommandProcessor, service.Service):
     @service.coroutine
     def do(self,message):
         message=message.strip()
+        print(f"[NLP] Processing command: '{message}'")
         for (regex,func) in self.nlp_commands:
             m=re.match(regex,message,re.I)
             if m:
+                print(f"[NLP] Command matched pattern: {regex}")
                 result = yield func(self,message,*m.groups())
+                print(f"[NLP] Command result: {result}")
                 raise service.Return(result)
+        print(f"[NLP] ERROR: Command not recognized: '{message}'")
         raise Exception("Command not recognized.")
 
     #result = yield self.queue_cmd("queue")
