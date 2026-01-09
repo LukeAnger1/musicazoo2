@@ -1,0 +1,22 @@
+[Unit]
+Description=Musicazoo - Multi-service music queue system
+After=network.target sound.target
+
+[Service]
+Type=forking
+User=USER_PLACEHOLDER
+Group=USER_PLACEHOLDER
+WorkingDirectory=/home/user/musicazoo2
+Environment="PYTHONPATH=/home/user/musicazoo2"
+Environment="SHMOOZE_SETTINGS=/home/user/musicazoo2/settings.json"
+Environment="VDPAU_DRIVER=va_gl"
+Environment="DISPLAY=:0"
+ExecStart=/usr/bin/supervisord -c /home/user/musicazoo2/supervisord.conf
+ExecStop=/usr/bin/supervisorctl -c /home/user/musicazoo2/supervisord.conf shutdown
+ExecReload=/usr/bin/supervisorctl -c /home/user/musicazoo2/supervisord.conf reload
+PIDFile=/tmp/supervisord.pid
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
